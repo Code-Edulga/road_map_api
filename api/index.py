@@ -39,7 +39,7 @@ def generate_road_maps(query: str) -> dict:
 
     # Generate response from OpenAI
     try:
-        response = llm.predict(prompt)
+        response = llm.invoke(prompt)
     except Exception as e:
         raise Exception(f"Error interacting with OpenAI: {str(e)}")
 
@@ -48,12 +48,12 @@ def generate_road_maps(query: str) -> dict:
         cleaned_response = response.content.strip('```json').strip('```').strip()
         roadmap = json.loads(cleaned_response)
     except Exception as e:
-        raise Exception(f"Error parsing OpenAI response: {str(e)}")
+        raise Exception(f"Error parsing OpenAI response: {str(e)}, {cleaned_response}")
 
     return roadmap
 
 
-@app.route("/generate-roadmap", methods=["POST"])
+@app.route("/generate-roadmap", methods=["GET"])
 def generate_roadmap_endpoint():
     """
     API endpoint to generate a learning roadmap.
