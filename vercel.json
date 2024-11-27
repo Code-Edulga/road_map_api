@@ -8,7 +8,7 @@
   ],
   "routes": [
     {
-      "src": "/generate-roadmaps",
+      "src": "/(.*)",
       "dest": "api/generate_roadmap.py"
     }
   ]
