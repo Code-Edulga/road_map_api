@@ -14,6 +14,10 @@ client = OpenAI(api_key=api_key)
 # Create FastAPI app
 app = FastAPI()
 
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to the API!"}
+
 @app.post("/generate-roadmaps")
 async def generate_roadmaps(request: Request):
     return await generate_roadmap(request)
