@@ -1,79 +1,65 @@
-from flask import Flask, request, jsonify
-from langchain_openai import ChatOpenAI
+from openai import OpenAI
 import os
-import json
 from dotenv import load_dotenv
+from fastapi import FastAPI, Request
+from typing import Dict
 
 # Load environment variables
 load_dotenv()
-
-# Initialize Flask app
-app = Flask(__name__)
-
-# API Key for OpenAI
 api_key = os.getenv("OPENAI_API_KEY")
 
+# Initialize OpenAI client
+client = OpenAI(api_key=api_key)
 
-def generate_road_maps(query: str) -> dict:
-    """
-    Generates a roadmap based on the query using OpenAI.
-    Returns the roadmap as a Python dictionary.
-    """
-    # Initialize the ChatOpenAI model
-    llm = ChatOpenAI(model="gpt-4", api_key=api_key)
+# Create FastAPI app
+app = FastAPI()
 
-    # Updated Prompt
+@app.post("/generate-roadmaps")
+async def generate_roadmaps(request: Request):
+    """
+    API endpoint to generate learning roadmaps.
+    """
+    data = await request.json()
+    json_input = data.get("json", {})
+
     prompt = f"""
-    You are an expert in creating structured, step-by-step learning roadmaps to help individuals achieve mastery in specific topics.
-    Generate a JSON representation of a **directed learning roadmap** based on the user's query. Ensure the relationships clearly show the order of learning.
+        Given a json with the following template
 
-    The output should include:
-    - `entity1`: The main concept or higher-level topic.
-    - `entity2`: The subtopic or concept that depends on `entity1`.
-    - `relationship`: Describe the connection (e.g., "prerequisite for", "includes", "builds upon").
-    - `priority`: A number indicating the order in which the concepts should be learned, where lower numbers are learned first. No two nodes should have the same priority, and the graph should reflect a clear progression.
+        interface NestedTopic {{
+            title?: string;
+            topic?: string;
+            definition?: {{
+                title?: string;
+                topics?: NestedTopic[];
+            }};
+            topics?: NestedTopic[];
+        }}
 
-    ### Query:
-    {query}
+        Create a roadmap of learning that considers the order of learning the concepts in json, consider the pedagogical aspects and fill important gaps if there is.
+        Output is ONLY a list, with nothing else.
+
+        Response: 
+        ["learning1", "learning2", "learning3"....]
+
+        ### json:
+        {json_input}
     """
 
-    # Generate response from OpenAI
+    # Call OpenAI API
     try:
-        response = llm.invoke(prompt)
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            model="gpt-4o",
+        )
+        cleaned_response = chat_completion.choices[0].message.content.strip()
+        roadmap = eval(cleaned_response)
+
+        return {"roadmap": roadmap}
+
     except Exception as e:
-        raise Exception(f"Error interacting with OpenAI: {str(e)}")
-
-    # Parse and clean the JSON response
-    try:
-        cleaned_response = response.content.strip('```json').strip('```').strip()
-        roadmap = json.loads(cleaned_response)
-    except Exception as e:
-        raise Exception(f"Error parsing OpenAI response: {str(e)}, {cleaned_response}")
-
-    return roadmap
-
-
-@app.route("/generate-roadmap", methods=["GET"])
-def generate_roadmap_endpoint():
-    """
-    API endpoint to generate a learning roadmap.
-    Expects a `query` string in the JSON body of the request.
-    """
-    data = request.get_json()
-
-    # Validate the request
-    if not data or "query" not in data:
-        return jsonify({"error": "Query is required."}), 400
-
-    query = data["query"]
-
-    try:
-        roadmap = generate_road_maps(query)
-        return jsonify({"roadmap": roadmap}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# Run the Flask app (for local development)
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+        return {"error": str(e)}
