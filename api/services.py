@@ -1,7 +1,7 @@
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import  Request
 from typing import Dict
 
 # Load environment variables
@@ -11,11 +11,7 @@ api_key = os.getenv("OPENAI_API_KEY")
 # Initialize OpenAI client
 client = OpenAI(api_key=api_key)
 
-# Create FastAPI app
-app = FastAPI()
-
-@app.post("/generate-roadmaps")
-async def generate_roadmaps(request: Request):
+async def generate_roadmap(request: Request):
     """
     API endpoint to generate learning roadmaps.
     """
